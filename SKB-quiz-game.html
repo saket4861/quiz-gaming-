@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SKB Quiz Game</title>
+
+  <!-- =============================================
+       GOOGLE FONTS
+       - "Bebas Neue" : tall, bold display font (great for the SKB logo)
+       - "Outfit"     : modern, clean body font
+  ============================================= -->
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* =============================================
+       CSS VARIABLES
+       Change these to restyle the entire app!
+    ============================================= */
+    :root {
+      --bg:         #0d0d0d;          /* Deep black background */
+      --card:       #141414;          /* Card surface */
+      --card2:      #1c1c1c;          /* Slightly lighter surface */
+      --ink:        #f0f0f0;          /* Primary text */
+      --muted:      #666666;          /* Dim text */
+      --accent:     #c8f135;          /* SKB brand color — electric lime */
+      --accent-dim: rgba(200,241,53,0.12); /* Transparent accent */
+      --correct:    #4ade80;          /* Green for correct */
+      --wrong:      #f87171;          /* Red for wrong */
+      --border:     #2a2a2a;          /* Subtle borders */
+      --radius:     18px;             /* Corner rounding */
+      --shadow:     0 24px 60px rgba(0,0,0,0.5);
+      --transition: 0.22s ease;
+    }
+
+    /* =============================================
+       RESET & BASE
+    ============================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg);
+      /* Subtle grid pattern on the background */
+      background-image:
+        linear-gradient(rgba(200,241,53,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200,241,53,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      color: var(--ink);
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 32px 16px 60px;
+    }
+
+    /* =============================================
+       SKB LOGO / HEADER
+       Appears at the top of every screen
+    ============================================= */
+    .skb-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      animation: dropIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+
+    /* The "SKB" badge block */
+    .skb-logo {
+      background: var(--accent);
+      color: #0d0d0d;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.9rem;
+      letter-spacing: 0.06em;
+      padding: 4px 14px 2px;
+      border-radius: 8px;
+      line-height: 1;
+      /* Subtle inner highlight on top edge */
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 14px rgba(200,241,53,0.35);
+    }
+
+    /* "Quiz" text next to the logo */
+    .skb-title-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 0.1em;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    /* Small green dot accent between logo and title */
+    .skb-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-bottom: 2px;
+    }
+
+    /* =============================================
+       MAIN CARD
+    ============================================= */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 560px;
+      padding: 36px 32px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Glow line at the top of the card */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+
+    /* Faint watermark "SKB" in the card background */
+    .card::after {
+      content: 'SKB';
+      position: absolute;
+      bottom: -10px;
+      right: -8px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 9rem;
+      color: rgba(200,241,53,0.03);
+      pointer-events: none;
+      line-height: 1;
+      user-select: none;
+    }
+
+    /* =============================================
+       SCREEN SYSTEM
+       Three screens: start → quiz → results
+       Only the one with .active is shown.
+    ============================================= */
+    .screen { display: none; }
+    .screen.active { display: block; animation: fadeUp 0.3s ease both; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-20px) scale(0.9); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* =============================================
+       SHARED TYPOGRAPHY
+    ============================================= */
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.4rem, 7vw, 3.2rem);
+      letter-spacing: 0.04em;
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    h1 .highlight { color: var(--accent); } /* Lime accent on key word */
+
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(1rem, 3vw, 1.2rem);
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--ink);
+      margin-bottom: 22px;
+    }
+
+    /* =============================================
+       BUTTONS
+    ============================================= */
+    .btn {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 13px 28px;
+      border: none;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+      letter-spacing: 0.02em;
+    }
+
+    /* Primary — lime button */
+    .btn-primary {
+      background: var(--accent);
+      color: #0d0d0d;
+      box-shadow: 0 0 24px rgba(200,241,53,0.25);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 32px rgba(200,241,53,0.40);
+    }
+    .btn-primary:active { transform: scale(0.97); }
+
+    /* Ghost — outlined button */
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1.5px solid var(--border);
+    }
+    .btn-ghost:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* =============================================
+       ── SCREEN 1: START ──
+    ============================================= */
+    .tagline {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 10px 0 30px;
+      line-height: 1.6;
+    }
+
+    /* Section label above the category grid */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* 2-column grid of category cards */
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    /* Each category is a hidden radio + styled label */
+    .cat-option input[type="radio"] { display: none; }
+
+    .cat-option label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: border-color var(--transition), color var(--transition), background var(--transition);
+    }
+
+    /* Checked = highlighted with accent */
+    .cat-option input:checked + label {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .cat-option label:hover { border-color: #444; color: var(--ink); }
+
+    .cat-icon { font-size: 1.25rem; }
+
+    /* =============================================
+       ── SCREEN 2: QUIZ ──
+    ============================================= */
+
+    /* Top row: category tag + question number */
+    .quiz-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .cat-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      background: var(--accent-dim);
+      color: var(--accent);
+      padding: 4px 12px;
+      border-radius: 99px;
+      border: 1px solid rgba(200,241,53,0.2);
+    }
+
+    .q-counter {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    /* ---- PROGRESS BAR ---- */
+    .progress-track {
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      margin-bottom: 22px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      width: 0%;                    /* Updated by JS */
+      transition: width 0.45s ease;
+      box-shadow: 0 0 8px rgba(200,241,53,0.5);
+    }
+
+    /* ---- COUNTDOWN TIMER ---- */
+    .timer-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    #timer-bar-track {
+      flex: 1;
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    #timer-bar {
+      height: 100%;
+      background: var(--accent);         /* Green → red as time runs out */
+      border-radius: 99px;
+      width: 100%;
+      transition: width 1s linear, background 0.4s ease;
+    }
+
+    /* When only a few seconds remain, the bar turns red */
+    #timer-bar.danger { background: var(--wrong); }
+
+    #timer-label {
+      min-width: 24px;
+      text-align: right;
+      color: var(--ink);
+      font-size: 0.9rem;
+    }
+
+    /* ---- ANSWER OPTIONS ---- */
+    .options-grid {
+      display: grid;
+      gap: 9px;
+      margin-top: 6px;
+    }
+
+    .option-btn {
+      background: var(--card2);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      color: var(--ink);
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.92rem;
+      font-weight: 500;
+      padding: 13px 16px;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color var(--transition), background var(--transition), transform var(--transition);
+    }
+
+    .option-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      transform: translateX(4px);
+    }
+
+    /* Letter badge: A / B / C / D */
+    .option-letter {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: var(--muted);
+      transition: background var(--transition), color var(--transition);
+    }
+
+    /* ---- Answer result states ---- */
+
+    /* Correct answer */
+    .option-btn.correct {
+      border-color: var(--correct);
+      background: rgba(74,222,128,0.10);
+    }
+    .option-btn.correct .option-letter {
+      background: var(--correct);
+      color: #0d0d0d;
+    }
+
+    /* Wrong answer */
+    .option-btn.wrong {
+      border-color: var(--wrong);
+      background: rgba(248,113,113,0.10);
+    }
+    .option-btn.wrong .option-letter {
+      background: var(--wrong);
+      color: #0d0d0d;
+    }
+
+    /* Disabled after answering */
+    .option-btn:disabled { cursor: default; transform: none !important; }
+
+    /* ---- Feedback line ---- */
+    #feedback {
+      margin-top: 14px;
+      padding: 11px 16px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: none;
+    }
+    #feedback.correct-msg {
+      background: rgba(74,222,128,0.10);
+      color: #4ade80;
+      border: 1px solid rgba(74,222,128,0.2);
+      display: block;
+    }
+    #feedback.wrong-msg {
+      background: rgba(248,113,113,0.10);
+      color: #f87171;
+      border: 1px solid rgba(248,113,113,0.2);
+      display: block;
+    }
+
+    /* Next button (hidden until user answers) */
+    #next-btn {
+      margin-top: 18px;
+      width: 100%;
+      display: none;
+    }
+
+    /* =============================================
+       ── SCREEN 3: RESULTS ──
+    ============================================= */
+    #result-screen { text-align: center; }
+
+    /* Animated donut score ring */
+    .score-ring {
+      width: 138px;
+      height: 138px;
+      border-radius: 50%;
+      /* --score-pct is set inline by JS to fill the arc */
+      background: conic-gradient(
+        var(--accent) 0% var(--score-pct, 0%),
+        var(--border) 0%
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 22px;
+      position: relative;
+      box-shadow: 0 0 30px rgba(200,241,53,0.15);
+    }
+
+    /* Inner dark circle creates the "donut hole" */
+    .score-ring::after {
+      content: '';
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--card);
+      position: absolute;
+    }
+
+    .score-number {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 0.04em;
+      position: relative;
+      z-index: 1;           /* Sits on top of the ::after hole */
+      color: var(--accent);
+    }
+
+    #result-screen h2 { margin-bottom: 6px; }
+
+    .result-msg {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 26px;
+    }
+
+    /* Correct / Wrong / Skipped stats */
+    .breakdown {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .bd-item {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      min-width: 85px;
+    }
+
+    .bd-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 0.04em;
+      line-height: 1;
+    }
+
+    .bd-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .result-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* SKB footer tag on results screen */
+    .skb-footer-tag {
+      margin-top: 24px;
+      font-size: 0.72rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .skb-footer-tag span {
+      color: var(--accent);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.85rem;
+    }
+
+    /* =============================================
+       SHAKE ANIMATION (wrong answer)
+    ============================================= */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-7px); }
+      40%      { transform: translateX(7px); }
+      60%      { transform: translateX(-5px); }
+      80%      { transform: translateX(5px); }
+    }
+    .shake { animation: shake 0.38s ease; }
+
+    /* =============================================
+       RESPONSIVE — tighten layout on small screens
+    ============================================= */
+    @media (max-width: 480px) {
+      .card { padding: 26px 18px 24px; }
+      .category-grid { grid-template-columns: 1fr; }
+      .breakdown { gap: 8px; }
+      .bd-item { padding: 12px 14px; min-width: 70px; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =============================================
+       SKB LOGO HEADER (always visible at top)
+  ============================================= -->
+  <header class="skb-header">
+    <!-- The main SKB brand badge -->
+    <div class="skb-logo">SKB</div>
+    <div class="skb-dot"></div>
+    <!-- "QUIZ" text beside the logo -->
+    <div class="skb-title-text">QUIZ</div>
+  </header>
+
+
+  <!-- =============================================
+       MAIN CARD — all screens live inside here
+  ============================================= -->
+  <div class="card">
+
+    <!-- ==========================================
+         SCREEN 1 — START / CATEGORY PICKER
+    ========================================== -->
+    <div id="start-screen" class="screen active">
+
+      <h1>TEST YOUR<br/><span class="highlight">KNOWLEDGE</span></h1>
+      <p class="tagline">
+        5 questions. 15 seconds each.<br/>
+        Pick a category and prove yourself.
+      </p>
+
+      <!-- Category radio group -->
+      <p class="section-label">Choose a category</p>
+      <div class="category-grid">
+
+        <!-- Each item: hidden radio + styled label -->
+        <div class="cat-option">
+          <!-- "checked" = default selection -->
+          <input type="radio" name="category" id="cat-science" value="science" checked/>
+          <label for="cat-science"><span class="cat-icon">🔬</span> Science</label>
+        </div>
+
+        <div class="cat-option">
+          <input type="radio" name="category" id="cat-history" value="history"/>
+          <label for="cat-history"><span class="cat-icon">🏛️</span> History</label>
+        </div>
+
+        <div class="cat-option">
+          <input type="radio" name="category" id="cat-geo" value="geography"/>
+          <label for="cat-geo"><span class="cat-icon">🌍</span> Geography</label>
+        </div>
+
+        <div class="cat-option">
+          <input type="radio" name="category" id="cat-tech" value="tech"/>
+          <label for="cat-tech"><span class="cat-icon">💻</span> Technology</label>
+        </div>
+
+      </div>
+
+      <!-- Starts the quiz -->
+      <button class="btn btn-primary" onclick="startQuiz()">Start Quiz →</button>
+
+    </div><!-- end #start-screen -->
+
+
+    <!-- ==========================================
+         SCREEN 2 — QUIZ (active questions)
+    ========================================== -->
+    <div id="quiz-screen" class="screen">
+
+      <!-- Top bar: category pill + "Q1 of 5" counter -->
+      <div class="quiz-meta">
+        <span class="cat-tag" id="cat-label">Science</span>
+        <span class="q-counter" id="q-counter">1 / 5</span>
+      </div>
+
+      <!-- Progress bar fills as questions are completed -->
+      <div class="progress-track">
+        <div id="progress-bar"></div>
+      </div>
+
+      <!-- Countdown timer bar -->
+      <div class="timer-row">
+        ⏱
+        <div id="timer-bar-track">
+          <div id="timer-bar"></div>
+        </div>
+        <span id="timer-label">15</span>s
+      </div>
+
+      <!-- Question text — filled by JS -->
+      <h2 id="question-text">Loading question…</h2>
+
+      <!-- Answer options — buttons injected by JS -->
+      <div class="options-grid" id="options-grid"></div>
+
+      <!-- Correct / wrong feedback message -->
+      <div id="feedback"></div>
+
+      <!-- Next button appears after answering -->
+      <button id="next-btn" class="btn btn-primary" onclick="nextQuestion()">
+        Next →
+      </button>
+
+    </div><!-- end #quiz-screen -->
+
+
+    <!-- ==========================================
+         SCREEN 3 — RESULTS
+    ========================================== -->
+    <div id="result-screen" class="screen">
+
+      <!-- Donut ring: --score-pct set by JS e.g. style="--score-pct:80%" -->
+      <div class="score-ring" id="score-ring">
+        <span class="score-number" id="score-number">0/5</span>
+      </div>
+
+      <h2 id="result-title">Great effort!</h2>
+      <p class="result-msg" id="result-msg">Here's your breakdown:</p>
+
+      <!-- Stats: how many correct, wrong, skipped -->
+      <div class="breakdown">
+        <div class="bd-item">
+          <div class="bd-num" id="bd-correct" style="color:var(--correct)">0</div>
+          <div class="bd-label">Correct</div>
+        </div>
+        <div class="bd-item">
+          <div class="bd-num" id="bd-wrong" style="color:var(--wrong)">0</div>
+          <div class="bd-label">Wrong</div>
+        </div>
+        <div class="bd-item">
+          <div class="bd-num" id="bd-skipped" style="color:var(--muted)">0</div>
+          <div class="bd-label">Skipped</div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <!-- Replay same category -->
+        <button class="btn btn-primary" onclick="startQuiz()">Play Again</button>
+        <!-- Go back and change category -->
+        <button class="btn btn-ghost" onclick="showScreen('start-screen')">Change Category</button>
+      </div>
+
+      <!-- SKB branding at the bottom of results -->
+      <p class="skb-footer-tag">Made by <span>SKB</span></p>
+
+    </div><!-- end #result-screen -->
+
+  </div><!-- end .card -->
+
+
+  <!-- =============================================
+       JAVASCRIPT — All game logic is here.
+       Well-commented so beginners can follow along.
+  ============================================= -->
+  <script>
+
+    /* =============================================
+       1. QUESTION BANK
+       ─────────────────────────────────────────
+       Add more questions by copying one block.
+       Format per question:
+         q       → the question string
+         options → array of 4 answer strings
+         answer  → index of the correct option (0 = first)
+    ============================================= */
+    const questionBank = {
+
+      science: [
+        { q: "What is the chemical symbol for water?",
+          options: ["H2O", "CO2", "NaCl", "O2"], answer: 0 },
+        { q: "How many bones are in the adult human body?",
+          options: ["186", "206", "226", "246"], answer: 1 },
+        { q: "Which planet is known as the Red Planet?",
+          options: ["Venus", "Jupiter", "Mars", "Saturn"], answer: 2 },
+        { q: "What gas do plants absorb from the air?",
+          options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Helium"], answer: 2 },
+        { q: "What is the powerhouse of the cell?",
+          options: ["Nucleus", "Ribosome", "Mitochondria", "Vacuole"], answer: 2 },
+      ],
+
+      history: [
+        { q: "In which year did World War II end?",
+          options: ["1943", "1944", "1945", "1946"], answer: 2 },
+        { q: "Who was the first President of the United States?",
+          options: ["Abraham Lincoln", "Thomas Jefferson", "John Adams", "George Washington"], answer: 3 },
+        { q: "How many hills was ancient Rome built on?",
+          options: ["5", "6", "7", "8"], answer: 2 },
+        { q: "Which empire was ruled by Genghis Khan?",
+          options: ["Ottoman", "Roman", "Mongol", "Persian"], answer: 2 },
+        { q: "Where did the Industrial Revolution begin?",
+          options: ["France", "Germany", "USA", "England"], answer: 3 },
+      ],
+
+      geography: [
+        { q: "What is the longest river in the world?",
+          options: ["Amazon", "Yangtze", "Nile", "Mississippi"], answer: 2 },
+        { q: "Which country has the most natural lakes?",
+          options: ["Russia", "USA", "Canada", "Brazil"], answer: 2 },
+        { q: "What is the capital city of Australia?",
+          options: ["Sydney", "Melbourne", "Brisbane", "Canberra"], answer: 3 },
+        { q: "Which is the largest desert in the world?",
+          options: ["Gobi", "Sahara", "Arabian", "Antarctic"], answer: 3 },
+        { q: "Which country has the largest population?",
+          options: ["USA", "India", "China", "Russia"], answer: 1 },
+      ],
+
+      tech: [
+        { q: "What does 'HTML' stand for?",
+          options: [
+            "Hyper Text Markup Language",
+            "High Tech Modern Language",
+            "Hyper Transfer Markup Logic",
+            "Home Tool Markup Language"
+          ], answer: 0 },
+        { q: "Who co-founded Apple Inc.?",
+          options: ["Bill Gates", "Steve Jobs", "Mark Zuckerberg", "Elon Musk"], answer: 1 },
+        { q: "What does 'CPU' stand for?",
+          options: [
+            "Central Program Unit",
+            "Computer Processing Utility",
+            "Central Processing Unit",
+            "Core Power Unit"
+          ], answer: 2 },
+        { q: "Which company created the Android operating system?",
+          options: ["Apple", "Microsoft", "Google", "Samsung"], answer: 2 },
+        { q: "What does 'URL' stand for?",
+          options: [
+            "Universal Resource Locator",
+            "Uniform Resource Locator",
+            "United Routing Link",
+            "User Request Layer"
+          ], answer: 1 },
+      ],
+
+    }; // end questionBank
+
+
+    /* =============================================
+       2. GAME STATE VARIABLES
+       These track everything during a quiz session.
+    ============================================= */
+    let currentCategory = 'science'; // Active category key
+    let questions        = [];        // Shuffled question list for this session
+    let currentIndex     = 0;         // Which question we're on (0-based)
+    let score            = 0;         // Number of correct answers
+    let wrongCount       = 0;         // Number of wrong answers
+    let skippedCount     = 0;         // Number of skipped (timer expired) answers
+    let timerInterval    = null;       // Holds the setInterval reference
+    let timeLeft         = 15;        // Seconds remaining for current question
+    const TIME_PER_Q     = 15;        // ← Change this to give more/less time
+
+
+    /* =============================================
+       3. UTILITY: SHOW A SCREEN
+       Hides all screens then shows the requested one.
+    ============================================= */
+    function showScreen(id) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+
+
+    /* =============================================
+       4. SHUFFLE HELPER
+       Randomises an array so questions appear in
+       a different order each time. (Fisher-Yates)
+    ============================================= */
+    function shuffle(arr) {
+      const a = [...arr]; // Copy so we don't mutate the original
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+
+    /* =============================================
+       5. START QUIZ
+       Called when user clicks "Start Quiz" button.
+    ============================================= */
+    function startQuiz() {
+      // Read which radio button is checked
+      const checked = document.querySelector('input[name="category"]:checked');
+      currentCategory = checked ? checked.value : 'science';
+
+      // Shuffle & take the first 5 questions
+      questions = shuffle(questionBank[currentCategory]).slice(0, 5);
+
+      // Reset counters
+      currentIndex = 0;
+      score        = 0;
+      wrongCount   = 0;
+      skippedCount = 0;
+
+      showScreen('quiz-screen');
+      loadQuestion();
+    }
+
+
+    /* =============================================
+       6. LOAD QUESTION
+       Renders the current question and its options.
+    ============================================= */
+    function loadQuestion() {
+      const q = questions[currentIndex];
+
+      // ── Top bar ──
+      // Category label (capitalise first letter)
+      document.getElementById('cat-label').textContent =
+        currentCategory.charAt(0).toUpperCase() + currentCategory.slice(1);
+
+      // "2 / 5" counter
+      document.getElementById('q-counter').textContent =
+        `${currentIndex + 1} / ${questions.length}`;
+
+      // Progress bar: how far through the quiz are we?
+      const pct = (currentIndex / questions.length) * 100;
+      document.getElementById('progress-bar').style.width = pct + '%';
+
+      // ── Question text ──
+      document.getElementById('question-text').textContent = q.q;
+
+      // ── Answer options ──
+      const grid = document.getElementById('options-grid');
+      grid.innerHTML = ''; // Clear previous options
+
+      const letters = ['A', 'B', 'C', 'D']; // Labels for each option
+
+      q.options.forEach((optionText, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `
+          <span class="option-letter">${letters[index]}</span>
+          <span>${escapeHTML(optionText)}</span>
+        `;
+        // Clicking the option calls checkAnswer with this index
+        btn.addEventListener('click', () => checkAnswer(index));
+        grid.appendChild(btn);
+      });
+
+      // ── Reset feedback and next button ──
+      const feedback = document.getElementById('feedback');
+      feedback.className = '';
+      feedback.textContent = '';
+      feedback.style.display = 'none';
+
+      document.getElementById('next-btn').style.display = 'none';
+
+      // ── Start the countdown timer ──
+      startTimer();
+    }
+
+
+    /* =============================================
+       7. START TIMER
+       Counts down from TIME_PER_Q to 0.
+       If time runs out, the question is auto-skipped.
+    ============================================= */
+    function startTimer() {
+      clearInterval(timerInterval); // Clear any previous timer
+      timeLeft = TIME_PER_Q;
+
+      const bar   = document.getElementById('timer-bar');
+      const label = document.getElementById('timer-label');
+
+      // Reset bar to full width / safe colour
+      bar.style.width = '100%';
+      bar.classList.remove('danger');
+      label.textContent = timeLeft;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+
+        // Update bar width as percentage of total time
+        bar.style.width = (timeLeft / TIME_PER_Q * 100) + '%';
+        label.textContent = timeLeft;
+
+        // Turn bar red when 5 seconds or fewer remain
+        if (timeLeft <= 5) bar.classList.add('danger');
+
+        // Time's up → treat as skipped
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          handleTimeout();
+        }
+      }, 1000); // Fires every 1 second
+    }
+
+
+    /* =============================================
+       8. HANDLE TIMEOUT (ran out of time)
+    ============================================= */
+    function handleTimeout() {
+      skippedCount++;
+      disableOptions();
+
+      // Highlight the correct answer so the player can learn
+      const correct = questions[currentIndex].answer;
+      const btns    = document.querySelectorAll('.option-btn');
+      btns[correct].classList.add('correct');
+
+      showFeedback(false, '⏰ Time\'s up! The correct answer is highlighted.');
+      document.getElementById('next-btn').style.display = 'block';
+    }
+
+
+    /* =============================================
+       9. CHECK ANSWER
+       Called when player clicks an option button.
+    ============================================= */
+    function checkAnswer(selectedIndex) {
+      clearInterval(timerInterval); // Stop the timer
+
+      const correctIndex = questions[currentIndex].answer;
+      const btns         = document.querySelectorAll('.option-btn');
+
+      disableOptions(); // Prevent double-clicking
+
+      if (selectedIndex === correctIndex) {
+        // ✅ Correct
+        score++;
+        btns[selectedIndex].classList.add('correct');
+        showFeedback(true, '✅ Correct! Well done.');
+      } else {
+        // ❌ Wrong — highlight both the wrong pick and the right answer
+        wrongCount++;
+        btns[selectedIndex].classList.add('wrong');
+        btns[correctIndex].classList.add('correct');
+
+        // Shake the card to signal wrong
+        document.querySelector('.card').classList.add('shake');
+        setTimeout(() => document.querySelector('.card').classList.remove('shake'), 400);
+
+        showFeedback(false, `❌ Wrong! The correct answer was: ${questions[currentIndex].options[correctIndex]}`);
+      }
+
+      // Show the Next button
+      document.getElementById('next-btn').style.display = 'block';
+    }
+
+
+    /* =============================================
+       10. DISABLE ALL OPTIONS
+       Called after the user answers (or timer runs out).
+    ============================================= */
+    function disableOptions() {
+      document.querySelectorAll('.option-btn').forEach(btn => {
+        btn.disabled = true;
+      });
+    }
+
+
+    /* =============================================
+       11. SHOW FEEDBACK MESSAGE
+       isCorrect → boolean
+       message   → string to display
+    ============================================= */
+    function showFeedback(isCorrect, message) {
+      const fb = document.getElementById('feedback');
+      fb.textContent = message;
+      fb.className   = isCorrect ? 'correct-msg' : 'wrong-msg';
+    }
+
+
+    /* =============================================
+       12. NEXT QUESTION
+       Called by the "Next →" button.
+    ============================================= */
+    function nextQuestion() {
+      currentIndex++;
+
+      if (currentIndex < questions.length) {
+        // More questions remain
+        loadQuestion();
+      } else {
+        // Quiz finished → show results
+        showResults();
+      }
+    }
+
+
+    /* =============================================
+       13. SHOW RESULTS SCREEN
+    ============================================= */
+    function showResults() {
+      showScreen('result-screen');
+
+      const total = questions.length;
+
+      // ── Score display ──
+      document.getElementById('score-number').textContent = `${score}/${total}`;
+
+      // Fill the donut ring based on score percentage
+      const pct = Math.round((score / total) * 100);
+      document.getElementById('score-ring').style.setProperty('--score-pct', pct + '%');
+
+      // ── Breakdown numbers ──
+      document.getElementById('bd-correct').textContent = score;
+      document.getElementById('bd-wrong').textContent   = wrongCount;
+      document.getElementById('bd-skipped').textContent = skippedCount;
+
+      // ── Dynamic result title and message ──
+      let title, msg;
+      if (pct === 100) {
+        title = '🏆 Perfect Score!';
+        msg   = 'Absolutely flawless. SKB is impressed!';
+      } else if (pct >= 80) {
+        title = '🎉 Excellent!';
+        msg   = 'You really know your stuff.';
+      } else if (pct >= 60) {
+        title = '👍 Good Job!';
+        msg   = 'Solid effort — keep practising!';
+      } else if (pct >= 40) {
+        title = '😅 Not Bad';
+        msg   = 'Room to improve — give it another go!';
+      } else {
+        title = '💪 Keep Going!';
+        msg   = 'Don\'t give up — try again!';
+      }
+
+      document.getElementById('result-title').textContent = title;
+      document.getElementById('result-msg').textContent   = msg;
+    }
+
+
+    /* =============================================
+       14. SECURITY HELPER
+       Escapes HTML special characters to prevent
+       any injected code from running.
+    ============================================= */
+    function escapeHTML(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+  </script>
+</body>
+</html>
